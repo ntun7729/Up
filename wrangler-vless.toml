@@ -1,5 +1,5 @@
 name = "up-vless-worker"
-main = "Vless_workers_pages/_worker混淆.js"
+main = "Vless_workers_pages/_worker_chrome_obf.js"
 compatibility_date = "2026-01-20"
 
 [vars]
