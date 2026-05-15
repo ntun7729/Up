@@ -76,6 +76,7 @@ DNS_TCP_FALLBACK = "false"
 | `wrangler-vless.toml` | Main Wrangler deployment config. |
 | `Vless_workers_pages/_worker_chrome_obf.js` | Deploy entrypoint. Generates `fp=chrome` subscriptions and applies overrides. |
 | `Vless_workers_pages/_worker混淆.js` | Core obfuscated Worker. |
+| `tools/cf-ip-checker.sh` | Termux/proot-friendly Cloudflare entry IP checker. |
 
 ## Quick deploy
 
@@ -291,6 +292,62 @@ Or set them in `wrangler-vless.toml`:
 BEST_CF_IPS = "104.16.1.1,104.17.2.2,172.64.3.3"
 SUB_COUNT = "3"
 ```
+
+## Termux/proot Cloudflare IP checker
+
+The repo includes a lightweight checker:
+
+```text
+tools/cf-ip-checker.sh
+```
+
+It uses `curl --connect-to` to test HTTPS reachability to your Worker/custom domain through candidate Cloudflare IPs. This preserves the correct domain, SNI, and Host behavior while forcing the TCP connection to a chosen IP.
+
+Install basic tools in Termux/proot if needed:
+
+```bash
+pkg install curl coreutils grep sed gawk
+```
+
+Run a basic test:
+
+```bash
+bash tools/cf-ip-checker.sh -d worker.example.com
+```
+
+Run against multiple HTTPS ports:
+
+```bash
+bash tools/cf-ip-checker.sh -d worker.example.com --ports 443,8443,2053 -n 10
+```
+
+Print a ready subscription URL with the best IPs:
+
+```bash
+bash tools/cf-ip-checker.sh \
+  -d worker.example.com \
+  --uuid 86c50e3a-5b87-49dd-bd20-03c7f2735e40 \
+  -n 10
+```
+
+Use your own candidate file:
+
+```bash
+cat > my-ips.txt <<'EOF'
+104.16.1.1
+104.17.2.2
+172.64.3.3
+EOF
+
+bash tools/cf-ip-checker.sh -d worker.example.com -f my-ips.txt -n 3
+```
+
+The script outputs:
+
+- a sorted table of working IPs
+- `cf-ip-results.csv`
+- a comma-separated best IP list
+- optionally a ready `/sub?ips=...` URL
 
 ## Custom domain example
 
