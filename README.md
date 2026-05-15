@@ -76,8 +76,6 @@ DNS_TCP_FALLBACK = "false"
 | `wrangler-vless.toml` | Main Wrangler deployment config. |
 | `Vless_workers_pages/_worker_chrome_obf.js` | Deploy entrypoint. Generates `fp=chrome` subscriptions and applies overrides. |
 | `Vless_workers_pages/_worker混淆.js` | Core obfuscated Worker. |
-| `SUBSCRIPTION_OVERRIDES.md` | Detailed subscription and runtime override examples. |
-| `VLESS_STABILITY_NOTES.md` | Notes about the readable/stability upgrade. |
 
 ## Quick deploy
 
@@ -183,25 +181,25 @@ Expected status should include values like:
 Default subscription:
 
 ```text
-https://your-domain/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub
+https://your-domain.example/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub
 ```
 
 Example using a custom domain:
 
 ```text
-https://clans.bond/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub
+https://example.com/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub
 ```
 
 To inspect decoded links:
 
 ```bash
-curl -s "https://your-domain/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub" | base64 -d
+curl -s "https://your-domain.example/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub" | base64 -d
 ```
 
 Check fingerprint:
 
 ```bash
-curl -s "https://your-domain/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub" \
+curl -s "https://your-domain.example/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub" \
   | base64 -d \
   | grep -o "fp=[^&]*" \
   | head
@@ -232,13 +230,13 @@ These change generated subscription links.
 Example:
 
 ```text
-https://your-domain/{UUID}/sub?ips=104.16.1.1,104.17.2.2&count=2
+https://your-domain.example/{UUID}/sub?ips=104.16.1.1,104.17.2.2&count=2
 ```
 
 Multiple ports:
 
 ```text
-https://your-domain/{UUID}/sub?ports=443,8443,2053&name=Test
+https://your-domain.example/{UUID}/sub?ports=443,8443,2053&name=Test
 ```
 
 ## Runtime WebSocket path overrides
@@ -259,19 +257,19 @@ These values are embedded into the generated WebSocket path and applied when the
 Example using a custom runtime ProxyIP fallback:
 
 ```text
-https://your-domain/{UUID}/sub?pyip=pyip.clans.bond&policy=direct-first
+https://your-domain.example/{UUID}/sub?pyip=pyip.example.com&policy=direct-first
 ```
 
 Expected decoded link path contains:
 
 ```text
-/UUID?ed=2048&pyip=pyip.clans.bond&policy=direct-first
+/UUID?ed=2048&pyip=pyip.example.com&policy=direct-first
 ```
 
 Verify encoded path:
 
 ```bash
-curl -s "https://your-domain/{UUID}/sub?pyip=pyip.clans.bond&policy=direct-first" \
+curl -s "https://your-domain.example/{UUID}/sub?pyip=pyip.example.com&policy=direct-first" \
   | base64 -d \
   | grep -o "path=[^#]*" \
   | head
@@ -299,19 +297,19 @@ SUB_COUNT = "3"
 If your Worker is routed through:
 
 ```text
-https://over.clans.bond
+https://worker.example.com
 ```
 
 Then your subscription URL is:
 
 ```text
-https://over.clans.bond/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub
+https://worker.example.com/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub
 ```
 
 Runtime ProxyIP override example:
 
 ```text
-https://over.clans.bond/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub?pyip=pyip.clans.bond&policy=direct-first
+https://worker.example.com/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub?pyip=pyip.example.com&policy=direct-first
 ```
 
 ## Updating your deployed Worker
@@ -328,7 +326,7 @@ npx wrangler deploy -c wrangler-vless.toml
 If a query-generated node is bad, remove the query parameters and use the normal subscription:
 
 ```text
-https://your-domain/{UUID}/sub
+https://your-domain.example/{UUID}/sub
 ```
 
 If a test Worker is bad, deploy your stable config again:
@@ -369,7 +367,7 @@ npx wrangler deploy -c wrangler-vless.toml
 Then test:
 
 ```bash
-curl -s "https://your-domain/{UUID}/sub?pyip=pyip.clans.bond&policy=direct-first" | base64 -d | grep -o "path=[^#]*" | head
+curl -s "https://your-domain.example/{UUID}/sub?pyip=pyip.example.com&policy=direct-first" | base64 -d | grep -o "path=[^#]*" | head
 ```
 
 ### `/health` works but client cannot connect
