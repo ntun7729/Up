@@ -1,0 +1,18 @@
+name = "up-vless-worker"
+main = "Vless_workers_pages/_worker混淆.js"
+compatibility_date = "2026-01-20"
+
+[vars]
+# Change this in Cloudflare dashboard or here before deploy.
+UUID = "86c50e3a-5b87-49dd-bd20-03c7f2735e40"
+
+# Comma-separated ProxyIP fallback hosts. These are used when direct connect fails.
+PROXY_IPS = "pyip.ygkkk.dpdns.org"
+
+# DNS-over-HTTPS endpoints used for VLESS UDP/53 DNS relay.
+DOH_ENDPOINTS = "https://cloudflare-dns.com/dns-query,https://dns.google/dns-query,https://dns.quad9.net/dns-query"
+
+CONNECT_TIMEOUT_MS = "6000"
+DNS_TIMEOUT_MS = "5000"
+DISABLE_DIRECT = "false"
+ENABLE_LOGS = "false"
