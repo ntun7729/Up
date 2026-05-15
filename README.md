@@ -16,6 +16,7 @@ The wrapper keeps the core Worker obfuscated, generates `fp=chrome` subscription
 - Wrangler deployment supported through `wrangler-vless.toml`.
 - Subscription endpoint at `/{UUID}/sub`.
 - Generated links use `fp=chrome` by default.
+- Generated links include `alpn=h3,h2,http/1.1` by default.
 - `PROXY_POLICY = "direct-first"` by default.
 - ProxyIP is treated as fallback, not as a universal relay.
 - UDP support is focused on DNS over UDP/53 through DoH-style handling in the Worker.
@@ -58,6 +59,25 @@ fp=randomized
 ```
 
 `fp=randomized` was unstable or unusable in testing with the client. The subscription wrapper now emits `fp=chrome` by default.
+
+### ALPN behavior
+
+Generated links include this default:
+
+```text
+alpn=h3,h2,http/1.1
+```
+
+You can override it:
+
+```text
+/sub?alpn=h3
+/sub?alpn=h2
+/sub?alpn=http/1.1
+/sub?alpn=none
+```
+
+Use `alpn=none` to omit the ALPN parameter completely.
 
 ### UDP behavior
 
@@ -154,6 +174,9 @@ DNS_TCP_SERVERS = "1.1.1.1:53,8.8.8.8:53,9.9.9.9:53"
 CONNECT_TIMEOUT_MS = "10000"
 DNS_TIMEOUT_MS = "5000"
 ENABLE_LOGS = "false"
+
+# Optional subscription defaults.
+SUB_ALPN = "h3,h2,http/1.1"
 ```
 
 ## Health and status checks
@@ -197,12 +220,12 @@ To inspect decoded links:
 curl -s "https://your-domain.example/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub" | base64 -d
 ```
 
-Check fingerprint:
+Check fingerprint and ALPN:
 
 ```bash
 curl -s "https://your-domain.example/86c50e3a-5b87-49dd-bd20-03c7f2735e40/sub" \
   | base64 -d \
-  | grep -o "fp=[^&]*" \
+  | grep -o "fp=[^&]*\|alpn=[^&]*" \
   | head
 ```
 
@@ -210,6 +233,7 @@ Expected:
 
 ```text
 fp=chrome
+alpn=h3,h2,http/1.1
 ```
 
 ## Subscription query overrides
@@ -222,6 +246,7 @@ These change generated subscription links.
 | `count` | `?count=3` | Limit number of generated IPs. |
 | `port` or `ports` | `?ports=443,8443,2053` | Generate selected entry ports. |
 | `fp` | `?fp=chrome` | Change generated TLS fingerprint. |
+| `alpn` | `?alpn=h3,h2,http/1.1` | Change generated ALPN list. Use `alpn=none` to omit. |
 | `host` | `?host=example.com` | Override WebSocket Host in generated links. |
 | `sni` | `?sni=example.com` | Override TLS SNI in generated links. |
 | `ed` | `?ed=2048` | Override early-data value in generated path. |
@@ -234,10 +259,16 @@ Example:
 https://your-domain.example/{UUID}/sub?ips=104.16.1.1,104.17.2.2&count=2
 ```
 
-Multiple ports:
+Multiple ports with ALPN:
 
 ```text
-https://your-domain.example/{UUID}/sub?ports=443,8443,2053&name=Test
+https://your-domain.example/{UUID}/sub?ports=443,8443,2053&alpn=h3,h2,http/1.1&name=Test
+```
+
+Disable ALPN parameter:
+
+```text
+https://your-domain.example/{UUID}/sub?alpn=none
 ```
 
 ## Runtime WebSocket path overrides
@@ -400,6 +431,17 @@ If you deployed under another Worker name, your original Worker remains safe.
 ### `fp=randomized` does not work
 
 Use `fp=chrome`. The wrapper emits `fp=chrome` by default.
+
+### ALPN causes instability
+
+Try disabling ALPN or forcing one value:
+
+```text
+/sub?alpn=none
+/sub?alpn=h3
+/sub?alpn=h2
+/sub?alpn=http/1.1
+```
 
 ### Connection drops every few seconds
 
