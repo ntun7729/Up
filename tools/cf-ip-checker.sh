@@ -6,7 +6,7 @@ PATH_TO_TEST="/health"
 PORTS="443"
 ROUNDS="1"
 TOP="10"
-CONCURRENCY="12"
+CONCURRENCY="8"
 CONNECT_TIMEOUT="2"
 MAX_TIME="5"
 IP_FILE=""
@@ -39,7 +39,7 @@ Options:
   --ports LIST              Comma-separated ports. Default: 443
   -f, --file FILE           Candidate IP file, one IP per line
   -r, --rounds N            Attempts per IP:port. Default: 1
-  -j, --concurrency N       Parallel IP:port tests. Default: 12
+  -j, --concurrency N       Parallel IP:port tests. Default: 8
   -n, --top N               Number of best IPs to print. Default: 10
   --connect-timeout SEC     Curl connect timeout. Default: 2
   --max-time SEC            Curl total timeout. Default: 5
@@ -52,10 +52,9 @@ Options:
   -h, --help                Show help
 
 Fast examples:
-  bash tools/cf-ip-checker.sh -d worker.example.com -j 16 --timeout 4
-  bash tools/cf-ip-checker.sh -d worker.example.com --ports 443,8443,2053 -j 24 -r 1 --timeout 4 -n 10
-  bash tools/cf-ip-checker.sh -d worker.example.com --random-only 100 -j 32 --timeout 4 -n 10
-  bash tools/cf-ip-checker.sh -d worker.example.com --random 200 -j 32 --uuid 86c50e3a-5b87-49dd-bd20-03c7f2735e40
+  bash tools/cf-ip-checker.sh -d worker.example.com -j 8 --timeout 4
+  bash tools/cf-ip-checker.sh -d worker.example.com --ports 443,8443,2053 -j 8 -r 1 --timeout 4 -n 10
+  bash tools/cf-ip-checker.sh -d worker.example.com --random-only 100 -j 12 --timeout 4 -n 10
 EOF
 }
 
@@ -89,7 +88,8 @@ need awk
 need sort
 need grep
 need sed
-need mkfifo
+need wc
+need sleep
 
 [ -n "$DOMAIN" ] || { usage; exit 1; }
 case "$PATH_TO_TEST" in /*) ;; *) PATH_TO_TEST="/$PATH_TO_TEST" ;; esac
@@ -104,8 +104,9 @@ base="${TMPDIR:-/tmp}/cfip.$$"
 tmp_ips="$base.ips"
 tmp_jobs="$base.jobs"
 tmp_out="$base.out"
-fifo="$base.fifo"
-trap 'rm -f "$tmp_ips" "$tmp_jobs" "$tmp_out" "$fifo"' EXIT
+result_dir="$base.results"
+mkdir -p "$result_dir" || die "cannot create temp directory"
+trap 'rm -rf "$tmp_ips" "$tmp_jobs" "$tmp_out" "$result_dir"' EXIT
 
 fetch_ranges() {
   ranges="$(curl -fsSL --connect-timeout 3 --max-time 8 "$RANGES_URL" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$' || true)"
@@ -123,7 +124,7 @@ generate_random_ips() {
     function ip2int(ip, a) { split(ip,a,"."); return a[1]*16777216+a[2]*65536+a[3]*256+a[4] }
     function int2ip(x, a,b,c,d) { a=int(x/16777216); x%=16777216; b=int(x/65536); x%=65536; c=int(x/256); d=x%256; return a"."b"."c"."d }
     function pow2(e, r,i) { r=1; for(i=0;i<e;i++) r*=2; return r }
-    BEGIN { srand(systime()+PROCINFO["pid"]) }
+    BEGIN { srand(systime()) }
     /^[0-9.]+\/[0-9]+$/ {
       split($0,p,"/"); cidr[++c]=$0; base[c]=ip2int(p[1]); mask[c]=p[2]
     }
@@ -170,7 +171,6 @@ done < "$tmp_ips"
 job_count="$(wc -l < "$tmp_jobs" | awk '{print $1}')"
 [ "$job_count" -gt 0 ] || die "no IP:port jobs"
 
-mkfifo "$fifo"
 cat > "$tmp_out" <<'EOF'
 ip,port,ok,fail,avg_ms,best_ms,last_code
 EOF
@@ -181,6 +181,7 @@ echo "ports=$PORTS rounds=$ROUNDS concurrency=$CONCURRENCY connect_timeout=$CONN
 test_ip_port() {
   ip="$1"
   port="$2"
+  idx="$3"
   ok=0
   fail=0
   sum="0"
@@ -212,41 +213,34 @@ test_ip_port() {
   if [ "$ok" -gt 0 ]; then
     avg_ms="$(awk -v s="$sum" -v n="$ok" 'BEGIN{printf "%.0f", (s/n)*1000}')"
     best_ms="$(awk -v s="$best" 'BEGIN{printf "%.0f", s*1000}')"
-    echo "$ip,$port,$ok,$fail,$avg_ms,$best_ms,$last_code" > "$fifo"
+    echo "$ip,$port,$ok,$fail,$avg_ms,$best_ms,$last_code" > "$result_dir/$idx.csv"
+    printf '+' >&2
   else
-    echo "." > "$fifo"
+    : > "$result_dir/$idx.csv"
+    printf '.' >&2
   fi
 }
 
-collector() {
-  done_count=0
-  while [ "$done_count" -lt "$job_count" ]; do
-    if IFS= read -r line < "$fifo"; then
-      if [ "$line" = "." ]; then
-        printf '.' >&2
-      else
-        printf '+' >&2
-        echo "$line" >> "$tmp_out"
-      fi
-      done_count=$((done_count + 1))
-    fi
-  done
+active_jobs() {
+  jobs -rp | wc -l | awk '{print $1}'
 }
-collector &
-collector_pid=$!
 
-running=0
+idx=0
 while read -r ip port; do
-  test_ip_port "$ip" "$port" &
-  running=$((running + 1))
-  if [ "$running" -ge "$CONCURRENCY" ]; then
-    wait -n 2>/dev/null || wait
-    running=$((running - 1))
-  fi
+  idx=$((idx + 1))
+  while [ "$(active_jobs)" -ge "$CONCURRENCY" ]; do
+    sleep 0.2
+  done
+  test_ip_port "$ip" "$port" "$idx" &
 done < "$tmp_jobs"
 wait
-wait "$collector_pid" 2>/dev/null || true
 printf '\n' >&2
+
+for f in "$result_dir"/*.csv; do
+  [ -f "$f" ] || continue
+  [ -s "$f" ] || continue
+  cat "$f" >> "$tmp_out"
+done
 
 {
   head -n 1 "$tmp_out"
