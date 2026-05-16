@@ -1,0 +1,20 @@
+name = "up-worker"
+main = "s5http_wkpgs/_worker.js"
+compatibility_date = "2026-01-20"
+
+# Non-secret defaults. You may change these before deploying.
+[vars]
+# Comma-separated proxy IP/domain fallback list. IPv6 must use [IPv6] syntax.
+PYIP_LIST = "pyip.ygkkk.dpdns.org"
+
+# Optional path lock. Example: ACCESS_PATH = "/my-secret-path"
+ACCESS_PATH = ""
+
+# Connection timeout for each direct/fallback attempt.
+CONNECT_TIMEOUT_MS = "5000"
+
+# Set to "true" to skip direct target connection and only use PYIP_LIST/client PYIP.
+DISABLE_DIRECT = "false"
+
+# Set to "true" only while debugging. Avoid logging sensitive data.
+ENABLE_LOGS = "false"
