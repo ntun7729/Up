@@ -1,7 +1,7 @@
 import { connect } from "cloudflare:sockets";
 
 const DEFAULT_UUID = "86c50e3a-5b87-49dd-bd20-03c7f2735e40";
-const DEFAULT_VERSION = "up-v2-2026-05-16";
+const DEFAULT_VERSION = "up-v2-2026-05-16b";
 const DEFAULT_PROXY_IPS = ["pyip.ygkkk.dpdns.org"];
 const DEFAULT_DOH_ENDPOINTS = [
   "https://cloudflare-dns.com/dns-query",
@@ -629,7 +629,7 @@ function buildBaseSubscription(url, config) {
 
   for (const ip of ips) {
     lines.push(
-      `vless://${config.uuid}@${ip}:443?encryption=none&security=tls&sni=${hostname}&fp=randomized&type=ws&host=${hostname}&path=${path}#${encodeURIComponent(
+      `vless://${config.uuid}@${ip}:443?encryption=none&security=tls&sni=${hostname}&fp=chrome&alpn=h3,h2,http/1.1&type=ws&host=${hostname}&path=${path}#${encodeURIComponent(
         `Up-V2-${ip}`,
       )}`,
     );
@@ -760,7 +760,8 @@ function renderLandingPage(url, config) {
       <p>
         This worker is online, tuned for steadier DNS handling, cleaner failover,
         and a quieter public surface. The public page stays simple; the profile
-        and subscription live behind your UUID path.
+        and subscription live behind your UUID path. The default network policy
+        is direct-first so non-Cloudflare targets do not get forced through ProxyIP first.
       </p>
     </section>
     <section class="grid">
@@ -939,7 +940,7 @@ function buildConfig(env, request) {
     proxyPolicy: parseEnum(
       firstDefined(env.PROXY_POLICY, env.proxyPolicy, env.DISABLE_DIRECT === "true" ? "proxy-only" : ""),
       ["proxy-first", "proxy-only", "direct-first"],
-      DEFAULT_PROXY_IPS.length ? "proxy-first" : "direct-first",
+      "direct-first",
     ),
     proxyFailCooldownMs: clampInteger(firstDefined(env.PROXY_FAIL_COOLDOWN_MS, env.proxyFailCooldownMs), 0, 900000, 120000),
     connectTimeoutMs: clampInteger(firstDefined(env.CONNECT_TIMEOUT_MS, env.connectTimeoutMs), 1000, 30000, 6000),
@@ -948,8 +949,8 @@ function buildConfig(env, request) {
     dnsCacheTtlSeconds: clampInteger(firstDefined(env.DNS_CACHE_TTL_SECONDS, env.dnsCacheTtlSeconds), 0, 3600, 300),
     dnsCacheMaxEntries: clampInteger(firstDefined(env.DNS_CACHE_MAX_ENTRIES, env.dnsCacheMaxEntries), 32, 2048, 512),
     dohEndpoints: parseList(firstDefined(env.DOH_ENDPOINTS, env.dohEndpoints), DEFAULT_DOH_ENDPOINTS),
-    dohStrategy: parseEnum(firstDefined(env.DOH_STRATEGY, env.dohStrategy), ["race", "sequential"], "race"),
-    dnsTcpFallback: parseBoolean(firstDefined(env.DNS_TCP_FALLBACK, env.dnsTcpFallback), true),
+    dohStrategy: parseEnum(firstDefined(env.DOH_STRATEGY, env.dohStrategy), ["race", "sequential"], "sequential"),
+    dnsTcpFallback: parseBoolean(firstDefined(env.DNS_TCP_FALLBACK, env.dnsTcpFallback), false),
     dnsTcpServers: parseList(firstDefined(env.DNS_TCP_SERVERS, env.dnsTcpServers), DEFAULT_DNS_TCP_SERVERS),
     enableLogs: parseBoolean(firstDefined(env.ENABLE_LOGS, env.enableLogs), false),
     adminToken: firstDefined(env.ADMIN_TOKEN, env.adminToken),
