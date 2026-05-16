@@ -1,0 +1,33 @@
+name = "up-vless-worker"
+main = "Vless_workers_pages/_worker_chrome_obf_generated.js"
+compatibility_date = "2026-01-20"
+
+[vars]
+# Your VLESS UUID.
+UUID = "86c50e3a-5b87-49dd-bd20-03c7f2735e40"
+
+# ProxyIP is fallback-only. It helps mostly with Cloudflare-hosted targets.
+# It is not a universal relay for every CDN/site.
+PROXY_IPS = "pyip.ygkkk.dpdns.org"
+
+# Stable default:
+# direct-first = try the real target first, then ProxyIP only if direct fails.
+# proxy-first can be unstable because ProxyIP is not universal.
+# proxy-only should be used only when you know your ProxyIP is stable for your targets.
+PROXY_POLICY = "direct-first"
+PROXY_FAIL_COOLDOWN_MS = "120000"
+
+# DNS-over-HTTPS endpoints used for VLESS UDP/53 DNS relay.
+DOH_ENDPOINTS = "https://cloudflare-dns.com/dns-query,https://dns.google/dns-query,https://dns.quad9.net/dns-query"
+
+# sequential is more stable on mobile networks than racing every endpoint.
+DOH_STRATEGY = "sequential"
+DNS_CACHE_TTL_SECONDS = "60"
+
+# Keep DNS-over-TCP fallback off by default for stability.
+DNS_TCP_FALLBACK = "false"
+DNS_TCP_SERVERS = "1.1.1.1:53,8.8.8.8:53,9.9.9.9:53"
+
+CONNECT_TIMEOUT_MS = "10000"
+DNS_TIMEOUT_MS = "5000"
+ENABLE_LOGS = "false"
