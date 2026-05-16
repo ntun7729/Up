@@ -1,0 +1,50 @@
+name = "up-vless-worker-plus"
+main = "Vless_workers_pages_improved/_worker_chrome_plus.js"
+compatibility_date = "2026-01-20"
+
+[vars]
+# Use a different Worker name so this deploys as a separate test Worker.
+# You can keep your current Worker untouched and compare behavior side by side.
+
+# Your VLESS UUID.
+UUID = "86c50e3a-5b87-49dd-bd20-03c7f2735e40"
+
+# ProxyIP is fallback-only. It helps mostly with Cloudflare-hosted targets.
+# It is not a universal relay for every CDN/site, so direct-first is safer.
+PROXY_IPS = "pyip.ygkkk.dpdns.org"
+
+# Recommended default for the improved worker:
+# direct-first = try the real target first, then ProxyIP only if direct fails.
+# This is safer for sites that are not on Cloudflare.
+PROXY_POLICY = "direct-first"
+PROXY_FAIL_COOLDOWN_MS = "120000"
+
+# DNS-over-HTTPS endpoints used for UDP/53 DNS relay.
+DOH_ENDPOINTS = "https://cloudflare-dns.com/dns-query,https://dns.google/dns-query,https://dns.quad9.net/dns-query"
+
+# Sequential is the safer default on shaky/mobile networks.
+DOH_STRATEGY = "sequential"
+DNS_CACHE_TTL_SECONDS = "300"
+DNS_CACHE_MAX_ENTRIES = "512"
+
+# Keep DNS-over-TCP fallback off by default unless you know you need it.
+DNS_TCP_FALLBACK = "false"
+DNS_TCP_SERVERS = "1.1.1.1:53,8.8.8.8:53,9.9.9.9:53"
+
+CONNECT_TIMEOUT_MS = "10000"
+DNS_TIMEOUT_MS = "5000"
+FIRST_BYTE_TIMEOUT_MS = "2500"
+
+# Connection protection.
+MAX_WS_PER_IP = "6"
+BLOCK_PRIVATE_DESTINATIONS = "false"
+
+# Optional admin token for detailed /status output.
+ADMIN_TOKEN = "change-me-before-deploy"
+
+ENABLE_LOGS = "false"
+
+# Subscription defaults for the improved wrapper.
+SUB_FP = "chrome"
+SUB_ALPN = "h3,h2,http/1.1"
+SUB_ED = "2048"
