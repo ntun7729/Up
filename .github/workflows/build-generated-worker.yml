@@ -1,0 +1,58 @@
+name: Build generated Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Vless_workers_pages/_worker混淆.js'
+      - 'Vless_workers_pages/_worker_chrome_obf.js'
+      - 'scripts/build-generated-worker.mjs'
+      - '.github/workflows/build-generated-worker.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install tools
+        run: |
+          npm install -g javascript-obfuscator wrangler
+
+      - name: Build generated Worker files
+        run: |
+          node scripts/build-generated-worker.mjs
+
+      - name: Create generated Wrangler config
+        run: |
+          cp wrangler-vless.toml wrangler-vless-generated.toml
+          sed -i 's#^main = .*#main = "Vless_workers_pages/_worker_chrome_obf_generated.js"#' wrangler-vless-generated.toml
+
+      - name: Validate generated Worker bundle
+        run: |
+          wrangler deploy --dry-run -c wrangler-vless-generated.toml
+
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Vless_workers_pages/_worker_core_generated.js Vless_workers_pages/_worker_chrome_obf_generated.js wrangler-vless-generated.toml
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+          else
+            git commit -m "Build generated obfuscated Worker files"
+            git push
+          fi
